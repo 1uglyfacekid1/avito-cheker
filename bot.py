@@ -8,15 +8,6 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 TG_TOKEN = os.environ.get("TG_TOKEN")
 TG_CHAT_ID = os.environ.get("TG_CHAT_ID")
 
-client = genai.Client(api_key=GEMINI_API_KEY)
-
-AVITO_URL = "https://www.avito.ru/solikamsk/telefony/sotovye_telefony-asg-SgJ0KC5icg?cd=1&s=104"
-
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept-Language": "ru-RU,ru;q=0.9",
-}
-
 def send_telegram(text):
     url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
     payload = {"chat_id": TG_CHAT_ID, "text": text, "parse_mode": "Markdown"}
@@ -25,34 +16,23 @@ def send_telegram(text):
     except Exception as e:
         print(f"Ошибка отправки в TG: {e}")
 
-def ask_gemini(title, price):
-    prompt = f"""
-    Оцени объявление с Авито:
-    Название: {title}
-    Цена: {price}
+try:
+    client = genai.Client(api_key=GEMINI_API_KEY)
     
-    Стоит ли брать? Выгодная ли это цена или подозрительный хлам? 
-    Напиши короткий вердикт в 2 предложениях. Начни с "🔥 ВЫГОДНО:", "⚠️ ПОДОЗРИТЕЛЬНО:" или "❌ ДОРОГО:".
-    """
-    try:
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt,
-        )
-        return response.text
-    except Exception as e:
-        return f"Анализ недоступен: {e}"
+    AVITO_URL = "https://www.avito.ru/solikamsk/telefony/sotovye_telefony-asg-SgJ0KC5icg?cd=1&s=104"
+    HEADERS = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "ru-RU,ru;q=0.9",
+    }
 
-def check_ads():
     print("Проверяю Авито...")
-    try:
-        response = requests.get(AVITO_URL, headers=HEADERS, timeout=15)
-        if response.status_code != 200:
-            print(f"Авито отдал код ошибки: {response.status_code}")
-            return
+    response = requests.get(AVITO_URL, headers=HEADERS, timeout=15)
+    print(f"Статус ответа Авито: {response.status_code}")
 
+    if response.status_code == 200:
         soup = BeautifulSoup(response.text, 'html.parser')
         ads = soup.find_all('div', {'data-marker': 'item'})
+        print(f"Найдено блоков объявлений: {len(ads)}")
         
         if ads:
             ad = ads[0]
@@ -65,15 +45,18 @@ def check_ads():
             price_tag = ad.find('span', {'data-marker': 'item-price'})
             price = price_tag.text.strip() if price_tag else "Цена не указана"
             
-            print(f"Найдено: {title} - {price}")
-            verdict = ask_gemini(title, price)
+            prompt = f"Оцени объявление с Авито: {title}, цена: {price}. Стоит ли брать? Ответь коротко в 2 предложениях."
+            ai_resp = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
             
-            msg = f"*[Тест / Новое с Авито]*\n[{title}]({link})\n💰 Цена: *{price}*\n\n{verdict}"
+            msg = f"*[Тест / Новое с Авито]*\n[{title}]({link})\n💰 Цена: *{price}*\n\n{ai_resp.text}"
             send_telegram(msg)
+        else:
+            send_telegram("⚠️ Бот запущен, но Авито не отдал блоки объявлений (возможно, изменилась верстка или сработала защита).")
+    else:
+        send_telegram(f"❌ Ошибка доступа к Авито, код: {response.status_code}")
 
-    except Exception as e:
-        print(f"Ошибка: {e}")
-
-if __name__ == "__main__":
-    c
-    heck_ads()
+except Exception as e:
+    err_msg = f"❌ Ошибка в коде бота: {str(e)}"
+    print(err_msg)
+    if TG_TOKEN and TG_CHAT_ID:
+        send_telegram(err_msg)
