@@ -2,7 +2,7 @@ name: Avito Checker
 
 on:
   schedule:
-    - cron: '*/15 * * * *' # Проверка каждые 15 минут
+    - cron: '*/30 * * * *' # Проверка каждые 30 минут
   workflow_dispatch: # Позволяет запустить вручную
 
 jobs:
