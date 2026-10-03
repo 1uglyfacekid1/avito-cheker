@@ -4,14 +4,12 @@ import requests
 from bs4 import BeautifulSoup
 from google import genai
 
-# Подтягиваем ключи из секретов GitHub Actions
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 TG_TOKEN = os.environ.get("TG_TOKEN")
 TG_CHAT_ID = os.environ.get("TG_CHAT_ID")
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-# Ссылка на нужный поиск Авито (можешь поменять под свой город/категорию)
 AVITO_URL = "https://www.avito.ru/solikamsk/telefony/sotovye_telefony-asg-SgJ0KC5icg?cd=1&s=104"
 
 HEADERS = {
@@ -46,7 +44,7 @@ def ask_gemini(title, price):
         return f"Анализ недоступен: {e}"
 
 def check_ads():
-    print("🔍 Проверяю Авито...")
+    print("Проверяю Авито...")
     try:
         response = requests.get(AVITO_URL, headers=HEADERS, timeout=15)
         if response.status_code != 200:
@@ -56,7 +54,6 @@ def check_ads():
         soup = BeautifulSoup(response.text, 'html.parser')
         ads = soup.find_all('div', {'data-marker': 'item'})
         
-        # Берем самое первое (самое свежее) объявление для теста
         if ads:
             ad = ads[0]
             title_tag = ad.find('h3', {'itemprop': 'name'})
@@ -68,7 +65,7 @@ def check_ads():
             price_tag = ad.find('span', {'data-marker': 'item-price'})
             price = price_tag.text.strip() if price_tag else "Цена не указана"
             
-            print( найден: {title} — {price} )
+            print(f"Найдено: {title} - {price}")
             verdict = ask_gemini(title, price)
             
             msg = f"*[Тест / Новое с Авито]*\n[{title}]({link})\n💰 Цена: *{price}*\n\n{verdict}"
@@ -78,5 +75,5 @@ def check_ads():
         print(f"Ошибка: {e}")
 
 if __name__ == "__main__":
-    ch
-  eck_ads()
+    c
+    heck_ads()
